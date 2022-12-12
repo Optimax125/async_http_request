@@ -137,12 +137,26 @@ elif not defined(js):
                                           onSuccess: Handler, onError: ErrorHandler) =
             doSendRequest(meth, url, body, headers, sslContext, onSuccess, onError)
     elif compileOption("threads"):
-        import threadpool, net
+        import threadpool, net, strutils
 
         type ThreadedHandler* = proc(r: Response, ctx: pointer) {.nimcall.}
 
         proc asyncHTTPRequest(url, httpMethod, body: string, headers: seq[(string, string)], handler: ThreadedHandler,
                               ctx: pointer) {.gcsafe.}=
+
+            proc getMethodFromString(str: string): HttpMethod =
+                result = case str.toLower
+                of "head": HttpHead
+                of "get": HttpGet
+                of "post": HttpPost
+                of "put": HttpPut
+                of "delete": HttpDelete
+                of "trace": HttpTrace
+                of "options": HttpOptions
+                of "connect": HttpConnect
+                of "patch": HttpPatch
+                else: HttpGet
+
             try:
                 when defined(ssl):
                     var client = newHttpClient(sslContext = getDefaultSslContext())
@@ -154,7 +168,7 @@ elif not defined(js):
                 client.headers = newHttpHeaders(headers)
                 client.headers["Content-Length"] = $body.len
                 # client.headers["Connection"] = "close" # This triggers nim bug #9867
-                let resp = client.request(url, httpMethod, body)
+                let resp = client.request(url, httpMethod.getMethodFromString, body)
                 client.close()
                 handler((parseStatusCode(resp.status), resp.status, resp.body), ctx)
             except:
