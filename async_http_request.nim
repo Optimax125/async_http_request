@@ -139,7 +139,7 @@ elif not defined(js):
     elif compileOption("threads"):
         import threadpool, net, strutils
 
-        type ThreadedHandler* = proc(r: Response, ctx: pointer, flag: bool) {.nimcall.}
+        type ThreadedHandler* = proc(r: Response, ctx: pointer, flag: bool) {.nimcall, gcsafe.}
 
         proc asyncHTTPRequest(url, httpMethod, body: string, headers: seq[(string, string)], handler: ThreadedHandler,
                               ctx: pointer, flag = false) {.gcsafe.}=
