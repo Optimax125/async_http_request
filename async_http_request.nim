@@ -139,10 +139,10 @@ elif not defined(js):
     elif compileOption("threads"):
         import threadpool, net, strutils
 
-        type ThreadedHandler* = proc(r: Response, ctx: pointer) {.nimcall.}
+        type ThreadedHandler* = proc(r: Response, ctx: pointer, flag: bool) {.nimcall.}
 
         proc asyncHTTPRequest(url, httpMethod, body: string, headers: seq[(string, string)], handler: ThreadedHandler,
-                              ctx: pointer) {.gcsafe.}=
+                              ctx: pointer, flag = false) {.gcsafe.}=
 
             proc getMethodFromString(str: string): HttpMethod =
                 result = case str.toLower
@@ -170,14 +170,14 @@ elif not defined(js):
                 # client.headers["Connection"] = "close" # This triggers nim bug #9867
                 let resp = client.request(url, httpMethod.getMethodFromString, body)
                 client.close()
-                handler((parseStatusCode(resp.status), resp.status, resp.body), ctx)
+                handler((parseStatusCode(resp.status), resp.status, resp.body), ctx, flag)
             except:
                 let msg = getCurrentExceptionMsg()
-                handler((-1, "Exception caught: " & msg, getCurrentException().getStackTrace()), ctx)
+                handler((-1, "Exception caught: " & msg, getCurrentException().getStackTrace()), ctx, flag)
 
         proc sendRequestThreaded*(meth, url, body: string, headers: openarray[(string, string)], handler: ThreadedHandler,
-                                  ctx: pointer = nil) =
+                                  ctx: pointer = nil, flag = false) =
             ## handler might not be called on the invoking thread
-            spawn asyncHTTPRequest(url, meth, body, @headers, handler, ctx)
+            spawn asyncHTTPRequest(url, meth, body, @headers, handler, ctx, flag)
     else:
         {.warning: "async_http_requests requires either --threads:on or -d:asyncHttpRequestAsyncIO".}
